@@ -1,0 +1,25 @@
+# Recitor Word Bank
+# Format: [[words]] with answer and tip fields
+
+[[words]]
+answer = "scream"
+tip = "高声喊"
+
+[[words]]
+answer = "platform"
+tip = "月台"
+
+[[words]]
+answer = "rating"
+tip = "收视率"
+
+[[words]]
+answer = "automatic"
+tip = "无意识的"
+
+[[words]]
+answer = "channel"
+tip = "渠道"
+
+# Add more words here...
+# This file can be extended without recompiling the application

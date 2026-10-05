@@ -1,0 +1,900 @@
+import { Button, LineEdit, VerticalBox, HorizontalBox, ScrollView, TabWidget } from "std-widgets.slint";
+
+export struct WordBookInfo {
+    id: string,
+    name: string,
+    description: string,
+    word_count: int,
+    progress: int,
+}
+
+export struct WordInfo {
+    answer: string,
+    meanings: string,
+    hint_type: string,
+}
+
+export struct WordStatsInfo {
+    word: string,
+    total_count: int,
+    correct_count: int,
+    wrong_count: int,
+    accuracy: float,
+    last_seen: string,
+    is_weak: bool,
+}
+
+export component AppWindow inherits Window {
+    title: "英语单词测验 - Recitor";
+    preferred-width: 850px;
+    preferred-height: 680px;
+    background: #FFFFFF;
+    
+    in-out property <bool> show-book-selector: true;
+    in-out property <bool> show-quiz: false;
+    in-out property <bool> show-management: false;
+    
+    in-out property <[WordBookInfo]> word-books: [];
+    in-out property <int> selected-book-index: -1;
+    in-out property <string> current-book-name: "";
+    
+    // 统计数据
+    in-out property <[WordStatsInfo]> word-stats-list: [];
+    in-out property <int> book-total-count: 0;
+    in-out property <int> book-correct-count: 0;
+    in-out property <int> book-wrong-count: 0;
+    in-out property <float> book-accuracy: 0.0;
+    
+    in-out property <[WordInfo]> words-list: [];
+    in-out property <int> selected-word-index: -1;
+    in-out property <string> edit-answer: "";
+    in-out property <string> edit-meanings: "";
+    in-out property <string> edit-hint-type: "Meaning";
+    
+    in-out property <string> current-tip: "选择单词本开始测验";
+    in-out property <string> user-input: "";
+    in-out property <int> score: 0;
+    in-out property <string> feedback: "";
+    in-out property <bool> quiz-active: false;
+    in-out property <bool> show-feedback: false;
+    in-out property <bool> is-correct: false;
+    
+    callback select-book(int);
+    callback manage-book(int);
+    callback start-quiz();
+    callback submit-answer(string);
+    callback next-question();
+    callback back-to-books();
+    callback back-to-books-from-management();
+    callback select-word(int);
+    callback save-word();
+    callback delete-word(int);
+    callback add-new-word();
+    callback reset-word-stats(string);
+    callback reset-book-stats();
+    
+    VerticalBox {
+        padding: 20px;
+        spacing: 15px;
+        
+        // ======== 单词本选择界面 ========
+        if show-book-selector: VerticalBox {
+            spacing: 20px;
+            
+            Text {
+                text: "请选择单词本";
+                font-size: 28px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                color: #1A1A1A;
+            }
+            
+            Text {
+                text: "不同的单词本包含不同难度和类型的词汇";
+                font-size: 16px;
+                horizontal-alignment: center;
+                color: #4A4A4A;
+            }
+            
+            Rectangle {
+                height: 2px;
+                background: #DDDDDD;
+            }
+            
+            ScrollView {
+                content-height: word-books.length * 140px;
+                
+                VerticalBox {
+                    spacing: 15px;
+                    
+                    for book[index] in word-books: Rectangle {
+                        height: 130px;
+                        border-radius: 12px;
+                        background: #F8F9FA;
+                        border-width: 2px;
+                        border-color: book-touch.has-hover ? #1976D2 : #E0E0E0;
+                        
+                        book-touch := TouchArea {
+                            HorizontalBox {
+                                spacing: 0px;
+                                
+                                Rectangle {
+                                    TouchArea {
+                                        clicked => {
+                                            select-book(index);
+                                        }
+                                        
+                                        VerticalBox {
+                                            padding: 18px;
+                                            spacing: 10px;
+                                            
+                                            HorizontalBox {
+                                                alignment: space-between;
+                                                
+                                                Text {
+                                                    text: book.name;
+                                                    font-size: 22px;
+                                                    font-weight: 700;
+                                                    color: #1A1A1A;
+                                                }
+                                                
+                                                Rectangle {
+                                                    width: 70px;
+                                                    height: 32px;
+                                                    border-radius: 16px;
+                                                    background: #1976D2;
+                                                    
+                                                    Text {
+                                                        text: book.word_count + "词";
+                                                        font-size: 14px;
+                                                        font-weight: 600;
+                                                        color: #FFFFFF;
+                                                        vertical-alignment: center;
+                                                        horizontal-alignment: center;
+                                                    }
+                                                }
+                                            }
+                                            
+                                            Text {
+                                                text: book.description;
+                                                font-size: 15px;
+                                                color: #4A4A4A;
+                                                wrap: word-wrap;
+                                            }
+                                            
+                                            Rectangle {
+                                                height: 8px;
+                                                border-radius: 4px;
+                                                background: #E0E0E0;
+                                                
+                                                Rectangle {
+                                                    width: parent.width * book.progress / book.word_count;
+                                                    height: parent.height;
+                                                    border-radius: 4px;
+                                                    background: #4CAF50;
+                                                }
+                                            }
+                                            
+                                            HorizontalBox {
+                                                alignment: space-between;
+                                                
+                                                Text {
+                                                    text: "进度：" + book.progress + " / " + book.word_count;
+                                                    font-size: 13px;
+                                                    color: #666666;
+                                                }
+                                                
+                                                Text {
+                                                    text: "点击开始测验";
+                                                    font-size: 13px;
+                                                    font-weight: 600;
+                                                    color: #1976D2;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Rectangle {
+                                    width: 80px;
+                                    background: #E3F2FD;
+                                    border-top-right-radius: 12px;
+                                    border-bottom-right-radius: 12px;
+                                    
+                                    TouchArea {
+                                        clicked => {
+                                            manage-book(index);
+                                        }
+                                        
+                                        VerticalBox {
+                                            alignment: center;
+                                            spacing: 5px;
+                                            
+                                            Text {
+                                                text: "⚙";
+                                                font-size: 24px;
+                                                horizontal-alignment: center;
+                                                color: #1976D2;
+                                            }
+                                            
+                                            Text {
+                                                text: "管理";
+                                                font-size: 13px;
+                                                font-weight: 600;
+                                                horizontal-alignment: center;
+                                                color: #1976D2;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ======== 单词管理界面（带标签页）========
+        if show-management: VerticalBox {
+            spacing: 15px;
+            
+            HorizontalBox {
+                spacing: 10px;
+                alignment: space-between;
+                
+                Button {
+                    text: "← 返回";
+                    clicked => {
+                        back-to-books-from-management();
+                    }
+                }
+                
+                Text {
+                    text: current-book-name + " - 管理";
+                    font-size: 20px;
+                    font-weight: 700;
+                    color: #1A1A1A;
+                }
+                
+                Button {
+                    text: "+ 添加新单词";
+                    primary: true;
+                    clicked => {
+                        add-new-word();
+                    }
+                }
+            }
+            
+            Rectangle {
+                height: 2px;
+                background: #DDDDDD;
+            }
+            
+            TabWidget {
+                // 标签页1: 单词编辑
+                Tab {
+                    title: "单词编辑";
+                    
+                    HorizontalBox {
+                        spacing: 15px;
+                        
+                        Rectangle {
+                            width: 40%;
+                            border-radius: 8px;
+                            background: #F8F9FA;
+                            border-width: 1px;
+                            border-color: #E0E0E0;
+                            
+                            VerticalBox {
+                                padding: 10px;
+                                
+                                Text {
+                                    text: "单词列表（" + words-list.length + "）";
+                                    font-size: 16px;
+                                    font-weight: 600;
+                                    color: #1A1A1A;
+                                    padding-bottom: 10px;
+                                }
+                                
+                                ScrollView {
+                                    VerticalBox {
+                                        spacing: 5px;
+                                        
+                                        for word[index] in words-list: Rectangle {
+                                            height: 50px;
+                                            border-radius: 6px;
+                                            background: selected-word-index == index ? #E3F2FD : #FFFFFF;
+                                            border-width: 1px;
+                                            border-color: selected-word-index == index ? #1976D2 : #E0E0E0;
+                                            
+                                            TouchArea {
+                                                clicked => {
+                                                    select-word(index);
+                                                }
+                                                
+                                                HorizontalBox {
+                                                    padding: 10px;
+                                                    spacing: 10px;
+                                                    alignment: space-between;
+                                                    
+                                                    VerticalBox {
+                                                        spacing: 2px;
+                                                        alignment: start;
+                                                        
+                                                        Text {
+                                                            text: word.answer;
+                                                            font-size: 16px;
+                                                            font-weight: 600;
+                                                            color: #1A1A1A;
+                                                        }
+                                                        
+                                                        Text {
+                                                            text: word.meanings;
+                                                            font-size: 12px;
+                                                            color: #666666;
+                                                            overflow: elide;
+                                                        }
+                                                    }
+                                                    
+                                                    Button {
+                                                        text: "✕";
+                                                        clicked => {
+                                                            delete-word(index);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Rectangle {
+                            border-radius: 8px;
+                            background: #F8F9FA;
+                            border-width: 1px;
+                            border-color: #E0E0E0;
+                            
+                            VerticalBox {
+                                padding: 20px;
+                                spacing: 15px;
+                                
+                                Text {
+                                    text: selected-word-index >= 0 ? "编辑单词" : "添加新单词";
+                                    font-size: 18px;
+                                    font-weight: 700;
+                                    color: #1A1A1A;
+                                }
+                                
+                                VerticalBox {
+                                    spacing: 8px;
+                                    
+                                    Text {
+                                        text: "英文单词 *";
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        color: #4A4A4A;
+                                    }
+                                    
+                                    LineEdit {
+                                        text <=> edit-answer;
+                                        placeholder-text: "例如：scream";
+                                        font-size: 16px;
+                                    }
+                                }
+                                
+                                VerticalBox {
+                                    spacing: 8px;
+                                    
+                                    Text {
+                                        text: "中文释义（用 \" / \" 分隔多个释义）*";
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        color: #4A4A4A;
+                                    }
+                                    
+                                    LineEdit {
+                                        text <=> edit-meanings;
+                                        placeholder-text: "例如：高声喊 / 尖叫 / 呼啸";
+                                        font-size: 16px;
+                                    }
+                                }
+                                
+                                VerticalBox {
+                                    spacing: 8px;
+                                    
+                                    Text {
+                                        text: "提示类型";
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        color: #4A4A4A;
+                                    }
+                                    
+                                    HorizontalBox {
+                                        spacing: 10px;
+                                        
+                                        Button {
+                                            text: "中文释义";
+                                            primary: edit-hint-type == "Meaning";
+                                            clicked => {
+                                                edit-hint-type = "Meaning";
+                                            }
+                                        }
+                                        
+                                        Button {
+                                            text: "部分拼写";
+                                            primary: edit-hint-type == "PartialSpell";
+                                            clicked => {
+                                                edit-hint-type = "PartialSpell";
+                                            }
+                                        }
+                                        
+                                        Button {
+                                            text: "上下文";
+                                            primary: edit-hint-type == "Context";
+                                            clicked => {
+                                                edit-hint-type = "Context";
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Rectangle {
+                                    height: 1px;
+                                    background: #DDDDDD;
+                                }
+                                
+                                HorizontalBox {
+                                    spacing: 10px;
+                                    alignment: center;
+                                    
+                                    Button {
+                                        text: "保存";
+                                        primary: true;
+                                        enabled: edit-answer != "" && edit-meanings != "";
+                                        clicked => {
+                                            save-word();
+                                        }
+                                    }
+                                    
+                                    if selected-word-index >= 0: Button {
+                                        text: "取消";
+                                        clicked => {
+                                            select-word(-1);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 标签页2: 答题统计
+                Tab {
+                    title: "答题统计";
+                    
+                    VerticalBox {
+                        spacing: 15px;
+                        
+                        // 汇总统计
+                        Rectangle {
+                            height: 100px;
+                            border-radius: 8px;
+                            background: #E8F5E9;
+                            border-width: 2px;
+                            border-color: #4CAF50;
+                            
+                            HorizontalBox {
+                                padding: 20px;
+                                spacing: 30px;
+                                alignment: space-around;
+                                
+                                VerticalBox {
+                                    spacing: 5px;
+                                    alignment: center;
+                                    
+                                    Text {
+                                        text: "总答题数";
+                                        font-size: 14px;
+                                        color: #666666;
+                                    }
+                                    
+                                    Text {
+                                        text: book-total-count;
+                                        font-size: 28px;
+                                        font-weight: 700;
+                                        color: #1A1A1A;
+                                    }
+                                }
+                                
+                                VerticalBox {
+                                    spacing: 5px;
+                                    alignment: center;
+                                    
+                                    Text {
+                                        text: "答对";
+                                        font-size: 14px;
+                                        color: #666666;
+                                    }
+                                    
+                                    Text {
+                                        text: book-correct-count;
+                                        font-size: 28px;
+                                        font-weight: 700;
+                                        color: #4CAF50;
+                                    }
+                                }
+                                
+                                VerticalBox {
+                                    spacing: 5px;
+                                    alignment: center;
+                                    
+                                    Text {
+                                        text: "答错";
+                                        font-size: 14px;
+                                        color: #666666;
+                                    }
+                                    
+                                    Text {
+                                        text: book-wrong-count;
+                                        font-size: 28px;
+                                        font-weight: 700;
+                                        color: #F44336;
+                                    }
+                                }
+                                
+                                VerticalBox {
+                                    spacing: 5px;
+                                    alignment: center;
+                                    
+                                    Text {
+                                        text: "正确率";
+                                        font-size: 14px;
+                                        color: #666666;
+                                    }
+                                    
+                                    Text {
+                                        text: round(book-accuracy) + "%";
+                                        font-size: 28px;
+                                        font-weight: 700;
+                                        color: #1976D2;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        HorizontalBox {
+                            alignment: space-between;
+                            
+                            Text {
+                                text: "单词详细统计（" + word-stats-list.length + "）";
+                                font-size: 18px;
+                                font-weight: 700;
+                                color: #1A1A1A;
+                            }
+                            
+                            Button {
+                                text: "重置所有统计";
+                                clicked => {
+                                    reset-book-stats();
+                                }
+                            }
+                        }
+                        
+                        // 单词统计列表
+                        ScrollView {
+                            VerticalBox {
+                                spacing: 8px;
+                                
+                                for stats in word-stats-list: Rectangle {
+                                    height: 80px;
+                                    border-radius: 8px;
+                                    background: stats.is_weak ? #FFEBEE : #FFFFFF;
+                                    border-width: 1px;
+                                    border-color: stats.is_weak ? #F44336 : #E0E0E0;
+                                    
+                                    HorizontalBox {
+                                        padding: 15px;
+                                        spacing: 15px;
+                                        
+                                        // 单词信息
+                                        VerticalBox {
+                                            width: 150px;
+                                            spacing: 5px;
+                                            alignment: start;
+                                            
+                                            Text {
+                                                text: stats.word;
+                                                font-size: 18px;
+                                                font-weight: 700;
+                                                color: #1A1A1A;
+                                            }
+                                            
+                                            if stats.is_weak: Text {
+                                                text: "⚠ 薄弱单词";
+                                                font-size: 12px;
+                                                font-weight: 600;
+                                                color: #F44336;
+                                            }
+                                        }
+                                        
+                                        // 统计数据
+                                        HorizontalBox {
+                                            spacing: 20px;
+                                            
+                                            VerticalBox {
+                                                spacing: 2px;
+                                                
+                                                Text {
+                                                    text: "出现";
+                                                    font-size: 12px;
+                                                    color: #666666;
+                                                }
+                                                
+                                                Text {
+                                                    text: stats.total_count;
+                                                    font-size: 20px;
+                                                    font-weight: 600;
+                                                    color: #1A1A1A;
+                                                }
+                                            }
+                                            
+                                            VerticalBox {
+                                                spacing: 2px;
+                                                
+                                                Text {
+                                                    text: "答对";
+                                                    font-size: 12px;
+                                                    color: #666666;
+                                                }
+                                                
+                                                Text {
+                                                    text: stats.correct_count;
+                                                    font-size: 20px;
+                                                    font-weight: 600;
+                                                    color: #4CAF50;
+                                                }
+                                            }
+                                            
+                                            VerticalBox {
+                                                spacing: 2px;
+                                                
+                                                Text {
+                                                    text: "答错";
+                                                    font-size: 12px;
+                                                    color: #666666;
+                                                }
+                                                
+                                                Text {
+                                                    text: stats.wrong_count;
+                                                    font-size: 20px;
+                                                    font-weight: 600;
+                                                    color: #F44336;
+                                                }
+                                            }
+                                            
+                                            VerticalBox {
+                                                spacing: 2px;
+                                                
+                                                Text {
+                                                    text: "正确率";
+                                                    font-size: 12px;
+                                                    color: #666666;
+                                                }
+                                                
+                                                Text {
+                                                    text: round(stats.accuracy) + "%";
+                                                    font-size: 20px;
+                                                    font-weight: 600;
+                                                    color: #1976D2;
+                                                }
+                                            }
+                                        }
+                                        
+                                        Rectangle {}
+                                        
+                                        // 操作按钮
+                                        Button {
+                                            text: "重置";
+                                            clicked => {
+                                                reset-word-stats(stats.word);
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                if word-stats-list.length == 0: Text {
+                                    text: "暂无答题数据，开始测验后这里会显示详细统计";
+                                    font-size: 16px;
+                                    color: #999999;
+                                    horizontal-alignment: center;
+                                    padding: 40px;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ======== 测验界面 ========
+        if show-quiz: VerticalBox {
+            spacing: 15px;
+            
+            HorizontalBox {
+                spacing: 10px;
+                
+                Button {
+                    text: "← 返回选择";
+                    clicked => {
+                        back-to-books();
+                    }
+                }
+                
+                Rectangle { }
+                
+                HorizontalBox {
+                    spacing: 10px;
+                    
+                    Text {
+                        text: "连续答对";
+                        font-size: 16px;
+                        color: #4A4A4A;
+                        vertical-alignment: center;
+                    }
+                    
+                    Text {
+                        text: score;
+                        font-size: 28px;
+                        font-weight: 700;
+                        color: #1976D2;
+                    }
+                }
+            }
+            
+            Rectangle {
+                height: 2px;
+                background: #DDDDDD;
+            }
+            
+            Rectangle {
+                border-radius: 12px;
+                background: #F8F9FA;
+                border-width: 2px;
+                border-color: quiz-active ? #1976D2 : #E0E0E0;
+                min-height: 250px;
+                
+                VerticalBox {
+                    padding: 24px;
+                    spacing: 20px;
+                    alignment: center;
+                    
+                    if quiz-active: Text {
+                        text: "第 " + (score + 1) + " 题";
+                        font-size: 16px;
+                        color: #1976D2;
+                        font-weight: 600;
+                    }
+                    
+                    Rectangle {
+                        min-height: 90px;
+                        background: #FFFFFF;
+                        border-radius: 8px;
+                        border-width: 2px;
+                        border-color: #E0E0E0;
+                        
+                        Text {
+                            text: current-tip;
+                            font-size: 26px;
+                            font-weight: 700;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                            wrap: word-wrap;
+                            color: #1A1A1A;
+                        }
+                    }
+                    
+                    if quiz-active: VerticalBox {
+                        spacing: 10px;
+                        
+                        Text {
+                            text: "请输入英文单词：";
+                            font-size: 16px;
+                            color: #4A4A4A;
+                            font-weight: 600;
+                        }
+                        
+                        LineEdit {
+                            placeholder-text: "输入答案并按 Enter...";
+                            text <=> user-input;
+                            font-size: 22px;
+                            enabled: !show-feedback;
+                            
+                            accepted(text) => {
+                                submit-answer(text);
+                            }
+                        }
+                    }
+                    
+                    if !quiz-active: Text {
+                        text: "👆 点击下方按钮开始测验";
+                        font-size: 18px;
+                        color: #999999;
+                    }
+                }
+            }
+            
+            if show-feedback: Rectangle {
+                border-radius: 12px;
+                background: is-correct ? #E8F5E9 : #FFEBEE;
+                border-width: 3px;
+                border-color: is-correct ? #4CAF50 : #F44336;
+                
+                VerticalBox {
+                    padding: 20px;
+                    spacing: 12px;
+                    
+                    Text {
+                        text: "结果";
+                        font-size: 16px;
+                        font-weight: 700;
+                        color: #1A1A1A;
+                    }
+                    
+                    Text {
+                        text: feedback;
+                        font-size: 18px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        color: is-correct ? #2E7D32 : #C62828;
+                        wrap: word-wrap;
+                    }
+                    
+                    if !is-correct: Text {
+                        text: "继续努力！";
+                        font-size: 15px;
+                        horizontal-alignment: center;
+                        color: #666666;
+                    }
+                }
+            }
+            
+            HorizontalBox {
+                spacing: 10px;
+                alignment: center;
+                
+                if !quiz-active: Button {
+                    text: "开始测验";
+                    primary: true;
+                    clicked => {
+                        start-quiz();
+                    }
+                }
+                
+                if quiz-active && !show-feedback: Button {
+                    text: "提交答案";
+                    primary: true;
+                    clicked => {
+                        submit-answer(user-input);
+                    }
+                }
+                
+                if show-feedback && is-correct: Button {
+                    text: "下一题";
+                    primary: true;
+                    clicked => {
+                        next-question();
+                    }
+                }
+                
+                if show-feedback && !is-correct: Button {
+                    text: "重新开始";
+                    clicked => {
+                        start-quiz();
+                    }
+                }
+            }
+        }
+    }
+}
